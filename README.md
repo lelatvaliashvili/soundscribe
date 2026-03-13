@@ -1,2 +1,121 @@
-# SoundScribe
-Text guided audio source separation and remix
+# Text-Guided Audio Stem Separation with Demucs and Remix API
+
+This project is a FastAPI-based backend that allows users to upload audio files, extract individual musical stems (vocals, drums, bass, other), and apply a wide range of remixing effects using natural language instructions
+
+- **Ollama (Local LLM)** – Interprets natural language prompts and converts them into structured intent for separation or remixing.
+- **Demucs** (`mdx_extra_q` model) for high-quality music source separation into standard stems: `vocals`, `drums`, `bass`, and `other`.
+- **FastAPI** Backend service
+- **RDBMS**  To enable multi-turn conversations, user-specific session tracking, and persistent chat history, the system integrates a PostgreSQL database via SQLModel.
+
+## 🚀 System Capabilities
+
+1. **User uploads audio** and provides a **natural language prompt** (e.g. `"only separate vocals"`).
+2. The prompt is interpreted by interpreter.py, producing response in the following sample format: { "type": "separation", "stems": ["vocals", "drums"] }
+3. Demucs separates the audio into 4 standard stems.
+4. Only the stems mentioned in the prompt are returned in the response.
+5. Output stems are sent back via API in downloadable formats.
+
+
+## 🎛️ DSP Effects (Remixing)
+
+Apply audio effects to the mix using structured JSON or natural language instructions like:
+
+> "Make vocals louder, add reverb to drums, and boost 3kHz by 5dB."
+
+### Supported Effects
+
+| Effect         | Description |
+|----------------|-------------|
+| **Volume Scaling** | Adjust stem loudness (e.g., `"make vocals louder"`) |
+| **Reverb**     | Add reverb per stem. Range: `0.0` (none) to `1.0` (max) |
+| **Pitch Shift**| Shift pitch in semitones (e.g., `+2`, `-1`) |
+| **Compression**| Apply dynamic range compression. Options: `low`, `medium`, `high` |
+| **EQ (Equalization)** | Boost or cut specific frequencies with `frequency`, `gain_db`, and `width` (Q) |
+| **Filtering**  | Apply frequency filters: `lowpass`, `highpass`, or `bandpass` with custom cutoffs |
+
+## 🧠 LLM-Driven Prompt Interpretation
+
+Uses **LLaMa3:8b** to classify and interpret natural language user instructions into one of two intent types:
+
+- **Separation**: Extract specific stems (e.g., vocals, drums)
+- **Remix**: Apply DSP effects (volume, reverb, EQ, filtering, etc.)
+- **Clarification**: Handle ambiguous requests, unsupported operations, and provide helpful guidance
+
+### Overview of the workflow
+
+- Parses user input
+- Converts it into structured JSON with fields like:
+  - `volumes`, `pitch_shift`, `reverb`, `compression`
+  - `eq` (frequency, gain, width)
+  - `filter` (type and cutoff)
+- Supports flexible natural language like:
+  > “add reverb to the whole mix to make it more ambient”
+
+## 🎵 Natural Conversation Flow
+
+
+- Provides educational responses for unsupported requests
+- Guides users toward available features
+- Maintains conversational context throughout sessions
+- Handles both audio processing and general queries gracefully
+
+---
+---
+
+## 🧠 Intelligent Intent Detection System
+
+The LLM-powered backend uses internal intent classification to understand user requests and route them appropriately. 
+
+### Why This Matters
+
+**🎯 Smart Routing**  
+Automatically distinguishes between separation requests ("give me vocals"), remix instructions ("make it louder"), and clarification needs ("what can you do?")
+
+**💬 Natural User Experience**  
+Provides helpful guidance instead of technical errors - when you ask for "trumpet solo," it explains the limitations and suggests alternatives
+
+**⚙️ Modular Architecture**  
+Clean separation between intent detection, audio processing, and response generation enables reliable testing and easy feature expansion
+
+### Technical Implementation
+- Multi-stage LLM classification pipeline
+- Context-aware conversation state management  
+
+## 🔁 Feedback Loop
+Enables iterative improvements based on follow-up user feedback, such as:
+
+> "Make vocals even louder and reduce reverb on drums"
+
+- Detects intent using feedback parser
+- Applies incremental changes to previously applied effects
+- Tracks and reuses `last_instructions` per session for refinement
+
+---
+
+## Architecture Overview
+
+
+#### **🎯 Separation of Concerns**
+- **API Layer**: HTTP handling, response formatting
+- **Business Logic**: Intent classification, audio processing workflows
+- **Data Layer**: Session management, file operations, persistence
+- **External Services**: LLM integration, audio processing libraries
+
+
+### Technical Stack Integration
+
+- **FastAPI**: Modern async web framework with automatic OpenAPI docs
+- **Pydantic**: Type-safe data validation and serialization
+- **PosgreSQL**: Lightweight persistence for session management
+- **NumPy/PyDub**: Optimized audio processing pipeline
+- **llama3**: Advanced natural language understanding
+
+---
+
+## ⚙️ Installation & Setup
+
+Install dependencies and launch the FastAPI server:
+
+```bash
+pip install -r requirments.txt
+uvicorn main:app --reload

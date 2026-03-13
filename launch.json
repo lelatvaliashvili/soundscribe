@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FastAPI: uvicorn",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "api.main:app",
+        "--reload",
+        "--port",
+        "8000"
+      ],
+      "jinja": true,
+      "env": {
+        "DYLD_LIBRARY_PATH": "/opt/homebrew/lib",
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  ]
+}
