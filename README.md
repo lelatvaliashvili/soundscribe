@@ -117,5 +117,5 @@ Enables iterative improvements based on follow-up user feedback, such as:
 Install dependencies and launch the FastAPI server:
 
 ```bash
-pip install -r requirments.txt
-uvicorn main:app --reload
+pip install -r pip install -r requirments.txt
+uvicorn api.main:app --reload
