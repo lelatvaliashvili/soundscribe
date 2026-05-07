@@ -16,3 +16,10 @@ class IntentType(Enum):
     SEPARATION = "separation"
     REMIX = "remix"
     CLARIFICATION = "clarification"
+
+VALID_STEMS = {
+    "vocals",
+    "drums",
+    "bass",
+    "other"
+}

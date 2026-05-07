@@ -2,7 +2,8 @@ import json
 import logging
 import re
 from dotenv import load_dotenv
-from .llm_client import ask_llm
+from models.intents import RemixIntent, UnifiedIntent
+from .llm_client import ask_llm, ask_llm_structured
 from .prompts import (
     EXTRACT_STEMS_PROMPT,
     CLASSIFY_PROMPT,
@@ -12,11 +13,12 @@ from .prompts import (
     USER_PROMPT_UNSUPPORTED_STEM
 )
 import numpy as np
-from demucs.pretrained import get_model
+from llm_backend.parser import parse_intent_response
+from config.audio_config import VALID_STEMS
 
 load_dotenv()
 logger = logging.getLogger(__name__)
-VALID_STEMS = {"vocals", "drums", "bass", "other"} #TODO: move somewhere in configs
+
 
 def extract_stem_list(prompt: str) -> list[str]:
     logger.info(f"prompt: {prompt}")
@@ -27,9 +29,11 @@ def extract_stem_list(prompt: str) -> list[str]:
 
     try:
 
-        content = ask_llm(EXTRACT_STEMS_PROMPT,
-                          f"{instruction}\n\nUser request: {prompt}",
-                          temperature=0.0)
+        content = ask_llm_structured(CLASSIFY_PROMPT,
+                                     prompt,
+                                     UnifiedIntent, #RemixIntent,
+                                     temperature=0)
+
         logger.info(f"Model response: {content}")
 
         valid_stems = [s.strip() for s in content.lower().split(",") if s.strip() in VALID_STEMS]
@@ -174,111 +178,22 @@ def classify_prompt(prompt: str) -> dict:
     response = ask_llm(CLASSIFY_PROMPT, prompt, temperature=0)
 
     try:
-        return json.loads(response)
+        return parse_intent_response(response) #json.loads(response)
     except json.JSONDecodeError:
         return {"type": "separation", "stems": []}  # Fallback
 
 def parse_feedback(feedback_text: str) -> dict:
-    '''
-    system_prompt = """
-        You are a music DSP feedback interpreter assistant.
-        Based on user feedback, extract intended adjustments in structured JSON.
-        Return JSON like:
-
-        {
-          "volumes": {
-            "vocals": "louder",
-            "drums": "softer"
-          },
-          "reverb": {
-            "vocals": "more",
-            "drums": "less"
-          },
-          "pitch_shift": {
-            "vocals": "+2",
-            "drums": "-1"
-          },
-          "compression": {
-            "vocals": "high",
-            "drums": "low"
-          }
-        }
-
-        Guidelines:
-        - Only include stems that are explicitly mentioned in feedback.
-        - For **volumes**, use one of: "slightly softer", "softer", "much softer", "mute", "slightly louder", "louder", "much louder".
-        - For **pitch_shift**, return semitone adjustments with '+' or '-' (e.g. '+2' or '-1').
-        - For **reverb**, use: "less", "more".
-        - For **compression**, use: "low", "medium", "high".
-        - If feedback does not mention an effect for a stem, omit that effect.
-        - If nothing is detected, return an empty JSON object {}.
-
-        Special pitch cases:
-        - "raise pitch back up by 4 semitones" → {"pitch_shift": {"vocals": "+4"}}
-        - "shift pitch 2 semitones more" → {"pitch_shift": {"vocals": "+2"}}
-        - "shift the changes up by 2 semitones" → {"pitch_shift": {"vocals": "+2"}}
-        - "can you shift the pitch of vocals 2 semitones more" → {"pitch_shift": {"vocals": "+2"}}
-        - "pitch shift up by 2 semitones" → {"pitch_shift": {"vocals": "+2"}}
-        - "pitch shift up again by 2 semitones" → {"pitch_shift": {"vocals": "+2"}}
-        - "pitch shift up again by 2 semitones more" → {"pitch_shift": {"vocals": "+2"}}
-        - "undo the pitch change" → {"pitch_shift": {"vocals": "0"}}
-
-        Special cases:
-        - "raise pitch back up by 4 semitones" → {"pitch_shift": {"vocals": "+4"}}
-        - "undo the pitch change" → {"pitch_shift": {"vocals": "0"}}
-        - "separate other" or "isolate other" → {"type": "separation", "stems": ["other"]}
-        - "raise pitch back up by 4 semitones" → {"pitch_shift": {"vocals": "+4"}}
-        - "2 semitones more", "pitch shift up again by 2 semitones" or "shift 2 semitones more" → {"pitch_shift": {"vocals": "+2"}}
-        - "pitch it down more" → {"pitch_shift": {"vocals": "-2"}}
-        - "make it even louder" → {"volumes": {"vocals": "louder"}} (if vocals was mentioned before)
-        Return only valid JSON as above. No explanations.
-    """
-
-    response = ask_llm(system_prompt, feedback_text, 0)
-    '''
 
     response = ask_llm(FEEDBACK_PROMPT, feedback_text, 0)
     try:
         json_match = re.search(r"\{.*\}", response, re.DOTALL) #extracts JSON like block that starts with {.  re.DOTALL - matches newline characters
         if json_match:
-            return json.loads(json_match.group())
+            #output becomes intent.type
+            return parse_intent_response(response) #json.loads(json_match.group())
         return {}
     except:
         return {} #TODO: needs more robust handling
 
-'''
-def describe_audio_edit(task_type: str, instructions: dict = None, extracted_stems: list[str] = None) -> str:
-    system_prompt = """
-       You are a friendly music producer describing what you just did with the audio. Be natural and varied in your responses.
-
-       Guidelines:
-       - If task is "separation", describe which stems were extracted with enthusiasm and variety
-       - If task is "remix", describe only the meaningful DSP adjustments applied (volume, pitch, reverb, compression, filters, EQ)
-       - Use musical and user-friendly language
-       - Ignore unchanged/default stems (e.g., volumes of 1.0 or effects not applied)
-       - Keep it short and clear (1-2 sentences)
-       - Don’t say "the user asked for" — speak as if you applied it
-       - Vary your language - don't always say the same thing
-
-       For separation, use varied, friendly phrases like:
-       - "Here you go! I've separated the [stems] for you"
-       - "Got your [stems] isolated and ready to download"
-       - "Perfect! Pulled out the [stems] - ready when you are"
-       - "There we go - your [stems] are separated and good to go"
-       - "All done! Your [stems] are ready"
-       - "Nice! I've extracted the [stems] for you"
-       """
-
-    user_prompt = {
-        "task_type": task_type,
-        "instructions": instructions,
-        "extracted_stems": extracted_stems
-    }
-
-    response = ask_llm(system_prompt, user_prompt, temperature=0.5) #this should get dictionary of requested edits
-
-    return response
-'''
 def describe_audio_edit(task_type: str, instructions: dict = None, extracted_stems: list[str] = None) -> str:
     system_prompt = """
     You are a friendly music producer describing what you just did with the audio.

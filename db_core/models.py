@@ -27,6 +27,11 @@ class AppSession(SQLModel, table=True):
     messages: List[Message] = Relationship(back_populates="session")
     files: List[File] = Relationship(back_populates="session")
 
+class SessionState(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    session_id: str = Field(foreign_key="appsession.id")
+    active_task: Optional[str] = None
+    last_instructions: Optional[str] = None
 
 """
 

@@ -218,3 +218,4 @@ dora/
 # audio outputs
 *.wav
 *.mp3
+todos.py

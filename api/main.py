@@ -12,7 +12,7 @@ from api.helpers.request_handlers import (
     handle_clarification_request,
     handle_feedback_request
 )
-from api.helpers.session_state import session_active_task
+from api.helpers.session_state import session_active_task #global-in memory state (this is bad, as race conditions is possible and multi worker safety is not guaranteed
 from api.helpers.response_builders import build_chat_response
 from api.helpers.session_state import session_last_instructions
 from api.upload import router as upload_router
@@ -73,14 +73,14 @@ async def chat(request: ChatRequest):
         if is_feedback_request:
             last_instructions = session_last_instructions.get(session_id, {"volumes": DEFAULT_VOLUMES})
             result = handle_feedback_request(user_message, session_id, last_instructions)
-            has_remix_output = "remix" in result
+            #has_remix_output = "remix" in result
         else:
-            if intent["type"] == IntentType.SEPARATION.value:
+            if intent.type == IntentType.SEPARATION: #removed .value:
                 result = handle_separation_request(intent, session_id)
-            elif intent["type"] == IntentType.REMIX.value:
+            elif intent.type == IntentType.REMIX:
                 result = handle_remix_request(intent, session_id)
                 session_active_task[session_id] = SESSION_TASK_REMIX
-            elif intent["type"] == IntentType.CLARIFICATION.value:
+            elif intent.type == IntentType.CLARIFICATION:
                 result = handle_clarification_request(intent, user_message, session_id)
             else:
                 result = {"reply": "I'm not sure how to help with that. Could you try rephrasing your request?"}
