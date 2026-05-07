@@ -20,16 +20,14 @@ The system combines:
 
 ## 🚀 System Capabilities
 
-1. **User uploads audio** and provides a **natural language prompt** (e.g. `"only separate vocals"`).
-2. The prompt is interpreted by interpreter.py, producing response in the following sample format: { "type": "separation", "stems": ["vocals", "drums"] }
-3. Demucs separates the audio into 4 standard stems.
-4. Only the stems mentioned in the prompt are returned in the response.
-5. Output stems are sent back via API in downloadable formats.
-
+1. Multi-stage intent classification for separation, remixing, clarification, and feedback refinement workflows
+2. Structured transformation pipelines converting free-form instructions into interpretable DSP operations
+3. Iterative conversational refinement with context-aware session tracking and incremental effect updates 
+4. Modular orchestration architecture enabling controllable and extensible AI-assisted audio workflows
 
 ## 🎛️ DSP Effects (Remixing)
 
-Apply audio effects to the mix using structured JSON or natural language instructions like:
+Apply audio effects to the mix using natural language instructions like:
 
 > "Make vocals louder, add reverb to drums, and boost 3kHz by 5dB."
 
@@ -76,17 +74,6 @@ Uses **LLaMa3:8b** to classify and interpret natural language user instructions 
 ## 🧠 Intelligent Intent Detection System
 
 The LLM-powered backend uses internal intent classification to understand user requests and route them appropriately. 
-
-### Why This Matters
-
-**🎯 Smart Routing**  
-Automatically distinguishes between separation requests ("give me vocals"), remix instructions ("make it louder"), and clarification needs ("what can you do?")
-
-**💬 Natural User Experience**  
-Provides helpful guidance instead of technical errors - when you ask for "trumpet solo," it explains the limitations and suggests alternatives
-
-**⚙️ Modular Architecture**  
-Clean separation between intent detection, audio processing, and response generation enables reliable testing and easy feature expansion
 
 ### Technical Implementation
 - Multi-stage LLM classification pipeline
