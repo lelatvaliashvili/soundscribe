@@ -1,11 +1,22 @@
 # Text-Guided Audio Stem Separation with Demucs and Remix API
 
-This project is a FastAPI-based backend that allows users to upload audio files, extract individual musical stems (vocals, drums, bass, other), and apply a wide range of remixing effects using natural language instructions
+Multimodal AI system for natural-language-controlled audio transformation and remixing. The platform enables users to upload audio tracks, perform music source separation into individual stems (vocals, drums, bass, other), and iteratively apply remixing and DSP effects through conversational interactions.
 
+
+
+
+
+The system combines:
+
+
+
+
+
+- **Demucs (mdx_extra_q)** for high-quality stem separation
+- **Ollama (Local LLM)**  workflows for prompt interpretation and structured intent extraction
+- **FastAPI** - backend services for orchestration and asynchronous processing
+- **RDBMS** - PostgreSQL + SQLModel for session persistence, multi-turn interactions, and chat history tracking
 - **Ollama (Local LLM)** – Interprets natural language prompts and converts them into structured intent for separation or remixing.
-- **Demucs** (`mdx_extra_q` model) for high-quality music source separation into standard stems: `vocals`, `drums`, `bass`, and `other`.
-- **FastAPI** Backend service
-- **RDBMS**  To enable multi-turn conversations, user-specific session tracking, and persistent chat history, the system integrates a PostgreSQL database via SQLModel.
 
 ## 🚀 System Capabilities
 
