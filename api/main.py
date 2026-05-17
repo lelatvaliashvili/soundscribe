@@ -15,6 +15,7 @@ from api.helpers.request_handlers import (
 from api.helpers.session_state import session_active_task #global-in memory state (this is bad, as race conditions is possible and multi worker safety is not guaranteed
 from api.helpers.response_builders import build_chat_response
 from api.helpers.session_state import session_last_instructions
+from api.helpers.validators import validate_chat_request
 from api.upload import router as upload_router
 from models.chat_request import ChatRequest
 from models.reset_request import ResetRequest
@@ -48,6 +49,7 @@ app.mount("/downloads", StaticFiles(directory="separated"), name="downloads")
 async def chat(request: ChatRequest):
     """Process user chat messages for audio separation and remixing."""
     try:
+        validate_chat_request(request)
         user_message = request.message
         session_id = request.session_id
         user_id = request.user_id
@@ -113,9 +115,11 @@ async def chat(request: ChatRequest):
 async def reset(request: ResetRequest):
     """Reset a user session."""
     try:
-        session_exists = get_session_and_verify_user(request.session_id, request.user_id)
-        if not session_exists:
-            raise HTTPException(status_code=404, detail="Session not found")
+        from db_core.config import get_session
+        with get_session() as db:
+            session_exists = get_session_and_verify_user(db, request.session_id, request.user_id)
+            if not session_exists:
+                raise HTTPException(status_code=404, detail="Session not found")
         
         reset_session(request.session_id)
         
@@ -124,7 +128,8 @@ async def reset(request: ResetRequest):
         
         logger.info(f"Reset session {request.session_id} for user {request.user_id}")
         return {"message": "Session reset successfully"}
-        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error resetting session: {e}")
         raise HTTPException(status_code=500, detail="Failed to reset session")
@@ -156,6 +161,8 @@ async def get_session_history(session_id: str, user_id: str):
         history = get_history(session_id)
         return history
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting session history: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve session history")

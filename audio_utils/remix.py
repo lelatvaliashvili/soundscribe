@@ -1,6 +1,7 @@
 import soundfile as sf
 import numpy as np
 import uuid
+import logging
 from audio_utils.separator import separate_audio
 from llm_backend.session_manager import get_file_from_db
 import librosa
@@ -9,6 +10,8 @@ import os
 import tempfile
 from audio_utils.helpers import numpy_array_to_audiosegment
 from api.helpers.session_state import session_last_instructions, session_active_task
+
+logger = logging.getLogger(__name__)
 
 def handle_remix(intent: dict, session_id: str) -> dict:
     """
@@ -50,7 +53,7 @@ def handle_remix(intent: dict, session_id: str) -> dict:
     for name, array in stem_arrays.items():
         array = array[:, :min_len]
         volume = volumes.get(name, 1.0)
-        print(f"DEBUG - Processing {name}: volume={volume}")
+        logger.debug("Processing stem %s with volume=%s", name, volume)
 
         scaled = np.clip(array * volume, -1.0, 1.0)
         audio = numpy_array_to_audiosegment(scaled, sr)
@@ -86,26 +89,26 @@ def handle_remix(intent: dict, session_id: str) -> dict:
                 audio = apply_compression_pydub(audio, threshold=-10, ratio=8)
 
         processed_segments.append(audio)
-        print(f"DEBUG - Added {name} to processed segments (duration: {len(audio)}ms)")
+        logger.debug("Added stem %s to processed segments, duration=%sms", name, len(audio))
 
     if not processed_segments:
         return {"reply": "No stems were processed for remixing."}
 
-    print(f"DEBUG - Mixing {len(processed_segments)} processed segments")
+    logger.debug("Mixing %s processed segments", len(processed_segments))
     final_mix = processed_segments[0]
     for i, seg in enumerate(processed_segments[1:], 1):
-        print(f"DEBUG - Overlaying segment {i+1}")
+        logger.debug("Overlaying segment %s", i + 1)
         final_mix = final_mix.overlay(seg)
 
     if global_reverb > 0:
-        print(f"DEBUG - Applying global reverb: {global_reverb}")
+        logger.debug("Applying global reverb=%s", global_reverb)
         final_mix = apply_reverb_pydub(final_mix, reverberance=global_reverb)
 
     output_name = generate_remix_name(intent)
     output_path = f"separated/{output_name}"
-    print(f"DEBUG - Exporting final mix to: {output_path}")
+    logger.info("Exporting remix for session %s to %s", session_id, output_path)
     final_mix.export(output_path, format="wav")
-    print(f"DEBUG - Export completed. Final mix duration: {len(final_mix)}ms")
+    logger.info("Remix export completed for session %s, duration=%sms", session_id, len(final_mix))
 
     session_active_task[session_id] = "remix"
     session_last_instructions[session_id] = instructions
@@ -132,7 +135,12 @@ def apply_reverb_pydub(audio: AudioSegment, reverberance: float = 50.0):
                 delay_ms = int(reverb_level * 100 + 50)  # 50-150ms delay
                 decay = reverb_level * 0.6  # 0-0.6 decay
 
-                print(f"DEBUG - Applying reverb: level={reverb_level}, delay={delay_ms}ms, decay={decay}")
+                logger.debug(
+                    "Applying reverb level=%s delay_ms=%s decay=%s",
+                    reverb_level,
+                    delay_ms,
+                    decay,
+                )
 
                 from pydub.utils import which
                 ffmpeg_path = which("ffmpeg")
@@ -144,13 +152,13 @@ def apply_reverb_pydub(audio: AudioSegment, reverberance: float = 50.0):
                     "-y", temp_output.name
                 ]
 
-                result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-                print(f"DEBUG - Reverb ffmpeg completed successfully")
+                subprocess.run(cmd, check=True, capture_output=True, text=True)
+                logger.debug("Reverb ffmpeg completed successfully")
 
                 return AudioSegment.from_wav(temp_output.name)
 
             except subprocess.CalledProcessError as e:
-                print(f"ERROR - Reverb ffmpeg failed: {e.stderr}")
+                logger.error("Reverb ffmpeg failed: %s", e.stderr)
                 return audio  # Return original audio if reverb fails
             finally:
                 for temp_file in [temp_input.name, temp_output.name]:

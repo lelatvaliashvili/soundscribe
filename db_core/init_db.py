@@ -1,11 +1,15 @@
 
+import logging
+
 from sqlmodel import SQLModel
 from db_core import models
 from db_core.config import engine
 
+logger = logging.getLogger(__name__)
+
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
-    print("created")
+    logger.info("Database tables created or already exist")
 
 if __name__ == "__main__":
     create_db_and_tables()

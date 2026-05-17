@@ -1,3 +1,4 @@
+import logging
 import torchaudio
 import torchaudio.transforms as T
 from pathlib import Path
@@ -7,6 +8,8 @@ from demucs.pretrained import get_model
 #diffq is a library used by Demucs for model weight compression / quantization.
 model = get_model(name="mdx_extra_q") #outside of separate_audio so that model is not loaded on each request
 
+logger = logging.getLogger(__name__)
+
 def separate_audio(filepath: str, selected_stems: list[str]):
 
     try:
@@ -14,7 +17,7 @@ def separate_audio(filepath: str, selected_stems: list[str]):
     except RuntimeError:
         torchaudio.set_audio_backend("soundfile")
 
-    print("Resolving file:", Path(filepath).resolve())
+    logger.info("Resolving audio file: %s", Path(filepath).resolve())
     assert Path(filepath).exists(), f"File not found: {filepath}"
     wav, sr = torchaudio.load(filepath)
 
@@ -28,7 +31,7 @@ def separate_audio(filepath: str, selected_stems: list[str]):
     elif wav.shape[1] != 2:
         raise ValueError(f"Demucs requires stereo (2 channels), but got shape: {wav.shape}")
 
-    print(f"WAV shape: {wav.shape}, sample rate: {sr}")
+    logger.debug("Loaded WAV shape=%s sample_rate=%s", wav.shape, sr)
 
     # Resample if not 44.1kHz
     if sr != 44100:
@@ -40,7 +43,7 @@ def separate_audio(filepath: str, selected_stems: list[str]):
         raise ValueError("No valid stems found in prompt. Please specify vocals, drums, bass, or other.")
 
     separated = apply_model(model, wav, device="cpu")  # Shape: [1, 4, 2, T]
-    print(f"Model output shape: {separated.shape}")
+    logger.debug("Demucs output shape=%s", separated.shape)
 
     # Remove batch dim: shape becomes [4, 2, T]
     separated = separated[0]
