@@ -9,7 +9,6 @@ import sys
 import numpy as np
 import soundfile as sf
 from audio_utils.remix import handle_remix
-from llm_backend.session_manager import save_file_to_db
 import tempfile
 
 def create_test_audio(duration_seconds=5, sample_rate=44100):
@@ -115,7 +114,7 @@ def test_remix_volume_changes():
                     "other": 1.0
                 },
                 "reverb": {
-                    "vocals": 0.8  # Heavy reverb
+                    "vocals": 0.8
                 }
             }
         }

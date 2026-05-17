@@ -1,15 +1,12 @@
 import os
-
-import openai
+from demucs.pretrained import get_model
 from openai import OpenAI
 from openai.types.chat import (
     ChatCompletionSystemMessageParam,
     ChatCompletionUserMessageParam,
 )
-
 from dotenv import load_dotenv
 
-from demucs.demucs.pretrained import get_model
 
 load_dotenv()
 api_key = os.getenv("API_KEY")

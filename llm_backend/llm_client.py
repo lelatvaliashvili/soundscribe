@@ -1,10 +1,15 @@
 import ollama
 from pydantic import schema
+import logging
 
 from models.intents import RemixIntent
 
+logger = logging.getLogger(__name__)
+
 
 def ask_llm(system_prompt: str, user_prompt: str, temperature: float = 0.0) -> str:
+    logger.info("Calling Ollama...")
+
     response = ollama.chat(
         model="llama3.1:8b",
         messages=[
@@ -15,6 +20,7 @@ def ask_llm(system_prompt: str, user_prompt: str, temperature: float = 0.0) -> s
             "temperature": temperature
         }
     )
+    logger.info("Ollama response received")
     return response["message"]["content"]
 
 #exact json schema contract instead of valid json request

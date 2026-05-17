@@ -75,12 +75,12 @@ async def chat(request: ChatRequest):
             result = handle_feedback_request(user_message, session_id, last_instructions)
             #has_remix_output = "remix" in result
         else:
-            if intent.type == IntentType.SEPARATION: #removed .value:
+            if intent.type == IntentType.SEPARATION.value:
                 result = handle_separation_request(intent, session_id)
-            elif intent.type == IntentType.REMIX:
+            elif intent.type == IntentType.REMIX.value:
                 result = handle_remix_request(intent, session_id)
-                session_active_task[session_id] = SESSION_TASK_REMIX
-            elif intent.type == IntentType.CLARIFICATION:
+                session_active_task[session_id] = SESSION_TASK_REMIX.value
+            elif intent.type == IntentType.CLARIFICATION.value:
                 result = handle_clarification_request(intent, user_message, session_id)
             else:
                 result = {"reply": "I'm not sure how to help with that. Could you try rephrasing your request?"}
@@ -160,6 +160,66 @@ async def get_session_history(session_id: str, user_id: str):
         logger.error(f"Error getting session history: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve session history")
 
+@app.delete("/session/{session_id}")
+async def delete_session(session_id: str, user_id: str):
+    """Delete a session and all related data."""
+
+    try:
+        from db_core.config import get_session
+        from db_core.models import AppSession, Message, File, SessionState
+
+        with get_session() as db:
+
+            session_exists = get_session_and_verify_user(
+                db,
+                session_id,
+                user_id
+            )
+
+            if not session_exists:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Session not found"
+                )
+
+            # delete related messages
+            db.query(Message).filter(
+                Message.session_id == session_id
+            ).delete()
+
+            # delete related files
+            db.query(File).filter(
+                File.session_id == session_id
+            ).delete()
+
+            # delete session state
+            db.query(SessionState).filter(
+                SessionState.session_id == session_id
+            ).delete()
+
+            # delete session itself
+            db.query(AppSession).filter(
+                AppSession.id == session_id
+            ).delete()
+
+            db.commit()
+
+        logger.info(f"Deleted session {session_id}")
+
+        return {
+            "message": "Session deleted successfully"
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Error deleting session: {e}")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to delete session"
+        )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
